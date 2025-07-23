@@ -5,7 +5,7 @@ import os
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import initialize_agent, AgentType
-
+import pandas as pd
 
 # Set your API keys
 # Define tools
@@ -83,33 +83,81 @@ def analyze_all_coins() -> str:
 
     return "\n".join(result)
 
+
 @tool
-def predict_any_crypto(coin: str) -> str:
+def predict_any_crypto(coin :str, days:int)-> str:
     """
-    Predicts buying/selling/holding decision for any crypto coin based on current price.
-    Example coin names: bitcoin, ethereum, dogecoin, solana, etc.
-    """
-    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin}&vs_currencies=usd"
-    response = requests.get(url)
+    Predicts buying/selling/holding thresholds for any crypto coin based on historical price data.
     
-    if response.status_code != 200:
-        return f"Error fetching price for '{coin}'"
+    Parameters:
+        coin (str): Coin name (e.g., 'bitcoin', 'solana', 'dogecoin')
+        days (int): Number of historical days to analyze
 
-    price_data = response.json().get(coin)
-    if not price_data:
-        return f"Coin '{coin}' not found on CoinGecko."
+    Output:
+        Prints key price stats and suggested buy/sell levels.
+    """
+    print("in predict_any_crypto")
+    def get_fsym_from_name_coingecko(name):
+        """Fetch the ticker symbol (fsym) from CoinGecko using coin name"""
+        try:
+            response = requests.get("https://api.coingecko.com/api/v3/search", params={"query": name})
+            response.raise_for_status()
+            coins = response.json().get("coins", [])
+            if coins:
+                return coins[0]['symbol'].upper()
+        except Exception as e:
+            return f"❌ Error getting symbol for '{name}': {e}"
 
-    price = price_data.get("usd")
+    fsym = get_fsym_from_name_coingecko(coin)
+    if not fsym:
+        return f"❌ Coin symbol for '{coin}' not found."
 
-    # Dummy logic: Replace with real model later
-    if price < 1:
-        suggestion = "Buy"
-    elif price > 30000:
-        suggestion = "Sell"
-    else:
-        suggestion = "Hold"
+    try:
+        response = requests.get(
+            "https://min-api.cryptocompare.com/data/v2/histoday",
+            params={'fsym': fsym, 'tsym': 'USD', 'limit': days}
+        )
+        response.raise_for_status()
+        data = response.json()['Data']['Data']
+    except Exception as e:
+        
+        return f"❌ Error fetching historical data for {fsym}: {e}"
 
-    return f"{coin.capitalize()} current price is ${price}. Suggested action: {suggestion}"
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+    df['close'] = df['close'].astype(float)
+
+    # Key metrics
+    current_price = df['close'].iloc[-1]
+    min_price = df['close'].min()
+    max_price = df['close'].max()
+    avg_price = df['close'].mean()
+    suggested_buy = round(min_price * 1.03, 2)
+    suggested_sell = round(max_price * 0.97, 2)
+
+    coin_name_formatted = coin.capitalize()
+
+    # Display result
+    print(f"📊 {coin_name_formatted} ({fsym}) – {days}-Day Price Analysis")
+    print(f"- Current Price:   ${current_price:.2f}")
+    print(f"- Lowest Price:    ${min_price:.2f}")
+    print(f"- Highest Price:   ${max_price:.2f}")
+    print(f"- Average Price:   ${avg_price:.2f}")
+    print()
+    print(f"📉 Suggested Buy Below:  ${suggested_buy}")
+    print(f"📈 Suggested Sell Above: ${suggested_sell}")
+    return {
+        "coin": coin.capitalize(),
+        "fsym": fsym,
+        "days": days,
+        "current_price": round(current_price, 2),
+        "min_price": round(min_price, 2),
+        "max_price": round(max_price, 2),
+        "average_price": round(avg_price, 2),
+        "suggested_buy_below": suggested_buy,
+        "suggested_sell_above": suggested_sell
+    }
 
 tools = [add, subtract,predict_crypto_rate,analyze_all_coins,predict_any_crypto]
 
@@ -125,6 +173,6 @@ agent = initialize_agent(
 )
 
 # Run a test
-response = agent.invoke("Predict what I should do with solana and dogecoin.")
+response = agent.invoke("Predict what I should do with xrp with 7 days")
 
-print(response)
+# print(response)
