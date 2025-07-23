@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from agents import (
     Agent, AsyncOpenAI, OpenAIChatCompletionsModel, Tool, function_tool,
@@ -5,6 +6,8 @@ from agents import (
 )
 import requests
 import pandas as pd
+from dotenv import load_dotenv
+load_dotenv()
 
 # Optional: for debugging
 enable_verbose_stdout_logging()
@@ -12,7 +15,7 @@ set_tracing_disabled(True)
 
 # Step 1: Gemini setup using OpenAI-compatible wrapper
 externalProvider = AsyncOpenAI(
-    api_key="AIzaSyCSkHLFCGWSOp2nqKTAMUyXmh93sIgZBWc",  # Gemini API Key
+    api_key=os.getenv('GOOGLE_API_KEY'),  # Gemini API Key
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"  # Gemini OpenAI-compatible endpoint
 )
 
@@ -116,4 +119,4 @@ def runAgent():
     # Print the agent's final response
     print(response.final_output)
 
-runAgent()
+# runAgent()
