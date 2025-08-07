@@ -10,8 +10,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Optional: for debugging
-enable_verbose_stdout_logging()
-set_tracing_disabled(True)
 
 #using Gemnin
 # # Step 1: Gemini setup using OpenAI-compatible wrapper
@@ -33,9 +31,11 @@ externalProvider = AsyncOpenAI(
 
 # Create a chat completions model using the Gemini model via the OpenAI API interface
 model = OpenAIChatCompletionsModel(
-    model="gemma:2b",  # Name of the llama model to use from ollama
+    model="llama3.2:latest",  # Name of the llama model to use from ollama
     openai_client=externalProvider  # The provider configured above
 )
+set_tracing_disabled(True)
+
 # Step 2: Tool input/output schema
 @dataclass
 class CryptoPredictionInput:
@@ -57,6 +57,37 @@ class CryptoPredictionOutput:
 # Step 3: Define the tool
 @function_tool
 def predict_crypto_tool(input: CryptoPredictionInput) -> CryptoPredictionOutput:
+    """
+    Predicts cryptocurrency pricing statistics and trading thresholds based on historical data.
+
+    This tool fetches historical daily closing prices for a given cryptocurrency symbol over a
+    specified number of past days. It then calculates the current price, minimum and maximum prices,
+    average price, and suggests buy/sell thresholds.
+
+    Parameters:
+        input (CryptoPredictionInput): Input data class with the following fields:
+            - coin (str): The name of the cryptocurrency (e.g., "bitcoin", "ethereum").
+            - days (int): The number of past days to analyze.
+
+    Returns:
+        CryptoPredictionOutput: Output data class with the following fields:
+            - coin (str): Properly capitalized name of the coin.
+            - fsym (str): The uppercased financial symbol (e.g., "BTC").
+            - days (int): The number of historical days used in the analysis.
+            - current_price (float): The most recent closing price in USD.
+            - min_price (float): The lowest closing price over the given period.
+            - max_price (float): The highest closing price over the given period.
+            - average_price (float): The mean closing price over the period.
+            - suggested_buy_below (float): Suggested buy threshold (3% above min).
+            - suggested_sell_above (float): Suggested sell threshold (3% below max).
+
+    Raises:
+        ValueError: If the coin symbol is not found or the price data fetch fails.
+
+    Example:
+        >>> predict_crypto_tool(CryptoPredictionInput(coin="bitcoin", days=30))
+        CryptoPredictionOutput(...)
+    """
     def get_fsym_from_name_coingecko(name: str):
         try:
             response = requests.get("https://api.coingecko.com/api/v3/search", params={"query": name})
@@ -122,11 +153,11 @@ def runAgent():
         model=model,
         tools=tools
     )
-
+    # input_text=input("Write a promopt")
     # Run the agent synchronously with a given input
     response = Runner.run_sync(
         starting_agent=agent,
-        input="What should I do with solana in the next 7 days?"  # Input message to the assistant
+        input="What should I do with solana in the next 7 days" # Input message to the assistant
     )
 
     # Print the agent's final response
