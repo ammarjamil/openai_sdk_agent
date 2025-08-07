@@ -1,7 +1,10 @@
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
+print(os.getenv('GOOGLE_API_KEY'))
 
 def predict_any_crypto(coin, days):
     """
@@ -71,4 +74,3 @@ def predict_any_crypto(coin, days):
 
 
 
-# predict_any_crypto("Solana",7)

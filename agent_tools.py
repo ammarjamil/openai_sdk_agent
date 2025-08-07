@@ -13,15 +13,28 @@ load_dotenv()
 enable_verbose_stdout_logging()
 set_tracing_disabled(True)
 
-# Step 1: Gemini setup using OpenAI-compatible wrapper
+#using Gemnin
+# # Step 1: Gemini setup using OpenAI-compatible wrapper
+# externalProvider = AsyncOpenAI(
+#     api_key=os.getenv('GOOGLE_API_KEY'),  # Gemini API Key
+#     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"  # Gemini OpenAI-compatible endpoint
+# )
+
+# model = OpenAIChatCompletionsModel(
+#     model="gemini-2.0-flash",
+#     openai_client=externalProvider
+# )
+
+#Using ollama local model
 externalProvider = AsyncOpenAI(
-    api_key=os.getenv('GOOGLE_API_KEY'),  # Gemini API Key
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"  # Gemini OpenAI-compatible endpoint
+    api_key="ollama",  # dummy value to satisfy SDK
+    base_url="http://localhost:11434/v1"  # local Ollama endpoint
 )
 
+# Create a chat completions model using the Gemini model via the OpenAI API interface
 model = OpenAIChatCompletionsModel(
-    model="gemini-2.0-flash",
-    openai_client=externalProvider
+    model="gemma:2b",  # Name of the llama model to use from ollama
+    openai_client=externalProvider  # The provider configured above
 )
 # Step 2: Tool input/output schema
 @dataclass
@@ -119,4 +132,4 @@ def runAgent():
     # Print the agent's final response
     print(response.final_output)
 
-# runAgent()
+runAgent()
